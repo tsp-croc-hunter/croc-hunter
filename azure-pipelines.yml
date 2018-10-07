@@ -1,0 +1,39 @@
+pool:
+  vmImage: 'Ubuntu-16.04'
+
+variables:
+    azureSubscription: 'tipascoa Visual Studio Enterprise'
+    azureContainerRegistry: tipascoa.azurecr.io
+    imageName: crochunter:$(Build.BuildId)
+
+steps:
+- task: Docker@1
+  displayName: Build Docker image
+  inputs:
+    azureSubscriptionEndpoint: $(azureSubscription)
+    azureContainerRegistry: $(azureContainerRegistry)
+    arguments: '--build-arg VCS_REF=$(Build.SourceVersion)'
+    includeLatestTag: true
+    imageName: $(imageName)
+
+- task: Docker@1
+  displayName: Push image to $(azureContainerRegistry) 
+  inputs:
+    azureSubscriptionEndpoint: $(azureSubscription)
+    azureContainerRegistry: $(azureContainerRegistry)
+    command: push
+    imageName: $(imageName)
+
+- task: HelmInstaller@0
+  displayName: Install Helm 2.9.1
+  inputs:
+    helmVersion: 2.9.1
+
+- task: HelmDeploy@0
+  displayName: Helm package
+  inputs:
+    command: package
+    chartPath: 'charts/croc-hunter'
+
+- task: PublishBuildArtifacts@1
+  displayName: publish helm packages to drop folder
